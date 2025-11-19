@@ -1,0 +1,175 @@
+/* --- General theme --- */
+body {
+  background-color: #f4f6f9;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* --- Container cards --- */
+.puzzle-card {
+  border-radius: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  background-color: white;
+  padding: 2rem;
+}
+
+/* --- Target number highlight --- */
+.target-number {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #dc3545;
+}
+
+/* ============================================================
+   BUTTONS (numbers + operations + expressions)
+   ============================================================ */
+
+/* Base style for number + operator buttons */
+.number-box,
+.operation-box {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0.5rem;
+  min-width: 60px;
+  height: 60px;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  background-color: #0d6efd;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.1s ease, background-color 0.2s;
+}
+
+.number-box:hover,
+.operation-box:hover {
+  background-color: #0b5ed7;
+  transform: scale(1.05);
+}
+
+.number-box:active,
+.operation-box:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================
+   EXPRESSION BUTTONS
+   ============================================================ */
+
+/* Expression buttons must visually match number buttons */
+.btn-expression {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0.5rem;
+  height: 60px;            /* match number button height */
+  min-width: 60px;
+  padding: 0 1rem;
+  border-radius: 9999px;
+  background: none !important;
+  box-shadow: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* ============================================================
+   INLINE EXPRESSION DISPLAY (bottom of page)
+   ============================================================ */
+
+#expression-container {
+  display: none;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem auto;
+  width: fit-content;
+  height: 60px;            /* keep alignment consistent */
+  padding: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* ============================================================
+   LAYERED EXPRESSION VISUALS
+   ============================================================ */
+
+
+.expr-layer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  margin: 2px;
+  position: relative;
+  transition: 0.2s;
+  line-height: 1.2;
+  font-weight: 600;
+  font-size: 1.4rem;
+  color: white;
+}
+
+.expr-layer-1 {
+  background-color: #0d6efd;
+  height: 60px;
+  padding: 0 1.2rem;
+}
+
+.expr-layer-2 {
+  background-color: #0d6efd;
+  height: 62px;
+  padding: 0 1.25rem;
+}
+
+.expr-layer-3 {
+  background-color: #094bb4;
+  height: 64px;
+  padding: 0 1.28rem;
+}
+
+.expr-layer-4 {
+  background-color: #073c98;
+  height: 66px;
+  padding: 0 1.30rem;
+}
+
+.expr-layer-5 {
+  background-color: #052d74;
+  height: 68px;
+  padding: 0 1.32rem;
+}
+
+.expr-layer-6 {
+  background-color: #051d4d;
+  hight: 70px;
+  color: white;
+}
+
+.expr-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+
+/* Text elements inside expressions */
+.expr-flat,
+.expr-symbol {
+  display: inline-block;
+  vertical-align: middle;
+  color: white;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+
+footer {
+  margin-top: 3rem;
+  text-align: center;
+  color: #999;
+  font-size: 0.9rem;
+}
