@@ -1,19 +1,11 @@
 
 // validation.js
 
-/**
- * Checks if a value is a numeric value.
- * @param {any} value 
- * @returns {boolean}
- */
-export function isNumber(value) {
-    if (typeof value === "object" && value !== null && Array.isArray(value.elements)) {
-        return Number.isFinite(value.value);
-    }
-    return !isNaN(value);
-}
 
-/**
+
+function isNumber(value) {
+    return !isNaN(value);
+}/**
  * Checks if a value is an operator (+, -, ×, ÷)
  * @param {any} value 
  * @returns {boolean}
