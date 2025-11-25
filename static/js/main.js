@@ -1,4 +1,4 @@
-import { isNumber, isOperator } from "./ validations.js";
+import { isNumber, isOperator, isValidExpression } from "./validations.js";
 
 document.addEventListener("DOMContentLoaded", async function() {
     const numberContainer = document.getElementById("number-container");

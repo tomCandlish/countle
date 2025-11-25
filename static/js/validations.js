@@ -3,7 +3,7 @@
 
 
 
-function isNumber(value) {
+export function isNumber(value) {
     return !isNaN(value);
 }/**
  * Checks if a value is an operator (+, -, ×, ÷)
