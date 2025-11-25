@@ -1,5 +1,4 @@
-
-
+import { isNumber, isOperator } from "./ validations.js";
 
 document.addEventListener("DOMContentLoaded", async function() {
     const numberContainer = document.getElementById("number-container");
@@ -146,15 +145,6 @@ document.addEventListener("DOMContentLoaded", async function() {
         }
 
         return build(exprObj, 0);
-    }
-
-    // --- Helpers ---
-    function isOperator(value) {
-        return ["+", "-", "×", "÷"].includes(value);
-    }
-
-    function isNumber(value) {
-        return !isNaN(value);
     }
 
 
