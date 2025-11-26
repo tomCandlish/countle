@@ -1,4 +1,4 @@
-import { isNumber, isOperator, isValidExpression } from "./validations.js";
+import { isNumber, isOperator, isValidExpression, canAppend } from "./validations.js";
 
 document.addEventListener("DOMContentLoaded", async function() {
     const numberContainer = document.getElementById("number-container");
@@ -59,18 +59,38 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     function moveToExpression(key, expr) {
-        // remove from available numbers
+        // 1. Check the last item in the expression
+        const exprKeys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
+        const lastKey = exprKeys[exprKeys.length - 1];
+        const lastItem = expression[lastKey];
+
+        // 2. Determine if the last item is a Number/Expression (and not an operator)
+        // In your code, operators are strings, numbers/expressions are objects.
+        const isLastItemNumber = lastItem && (typeof lastItem === 'object');
+
+        if (isLastItemNumber) {
+            // --- SWAP LOGIC ---
+            // A. Return the last item back to the 'numbers' pool
+            // We create a unique key to ensure no collisions in the numbers object
+            const returnKey = `returned_${Date.now()}`;
+            numbers[returnKey] = lastItem;
+
+            // B. Remove it from the expression
+            delete expression[lastKey];
+        }
+
+        // 3. Standard Logic (Append new item)
+        // Remove the *new* item from available numbers
         delete numbers[key];
 
-        // add to the working expression
-        const newKey = String(Object.keys(expression).length + 1);
-        expression[newKey] = expr;
+        // Add to the working expression (Determine new key based on current length)
+        // We recalculate length because we might have just deleted an item above
+        const nextIndex = Object.keys(expression).length + 1;
+        expression[String(nextIndex)] = expr;
 
         renderNumberButtons();
         renderExpression();
     }
-
-
     function renderExpression() {
         expressionContainer.innerHTML = "";
 
@@ -149,57 +169,60 @@ document.addEventListener("DOMContentLoaded", async function() {
 
 
     function updateDisplay() {
-        useButton.style.display = isValidExpression(expression) ? "inline-block" : "none";
-
-        const keys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
-        const last = expression[keys[keys.length - 1]];
-
-        const lastIsNum = (typeof last === "object" && last.elements) || isNumber(last);
-        operationButtons.forEach((btn) => (btn.disabled = !lastIsNum));
-    }
-    // --- Valid expres
-    function isValidExpression(expr) {
-        const items = Object.keys(expr)
+        const values = Object.keys(expression)
             .sort((a, b) => Number(a) - Number(b))
-            .map(k => expr[k]);
+            .map(k => expression[k]);
 
-        if (items.length < 3) return false;
+        const last = values[values.length - 1];
 
-        const isNumLike = (item) => {
-            if (typeof item === "object" && item.elements) {
-                return true; // any expression object counts as numeric term
-            }
-            return isNumber(item);
-        };
+        useButton.style.display = isValidExpression(expression)
+            ? "inline-block"
+            : "none";
 
-        if (!isNumLike(items[0])) return false;
+        // Update operator buttons (Keep validation here: can't put + after +)
+        operationButtons.forEach(btn => {
+            const op = btn.dataset.value;
+            btn.disabled = !canAppend(last, op);
+        });
 
-        for (let i = 1; i < items.length; i += 2) {
-            const op = items[i];
-            const nxt = items[i + 1];
-            if (!isOperator(op) || !isNumLike(nxt)) return false;
-        }
-
-        return true;
+        // Update number buttons
+        document.querySelectorAll(".btn-number").forEach(btn => {
+            // CHANGE: We always allow numbers to be clicked. 
+            // If it's a valid append, it appends. If it's a swap, moveToExpression handles it.
+            btn.disabled = false;
+        });
     }
 
 
     function appendValue(value) {
-        const keys = Object.keys(expression);
+        const keys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
         const lastKey = keys[keys.length - 1];
         const last = expression[lastKey];
 
-        if (isOperator(value)) {
-            if (!last || isOperator(last)) return;
-            expression[keys.length + 1] = value;
-        } else {
-            const valObj = (typeof value === "object" && value.elements)
-                ? JSON.parse(JSON.stringify(value))
-                : { value: Number(value), elements: [Number(value)] };
-            expression[keys.length + 1] = valObj;
+        // --- NEW OPERATOR SWAP LOGIC ---
+        // Determine if the last item is an operator (operators are stored as strings)
+        if (typeof last === 'string' && isOperator(last)) {
+            // Swap: Delete the old operator
+            delete expression[lastKey];
         }
 
-        renderExpression();
+        // Prevent invalid input (e.g., Number after Operator, which should never happen here
+        // if the UI is correct, but kept for safety in case of bugs)
+        if (last && !isOperator(last) && !canAppend(last, value)) {
+            console.warn("Rejected invalid input:", last, "→", value);
+            return;
+        }
+
+        // Standard Logic (Append new operator)
+        let valObj;
+        // Since operators are strings, we just use the value directly
+        valObj = value;
+
+        // Use the next sequential key for the new entry
+        const nextIndex = Object.keys(expression).length + 1;
+        expression[String(nextIndex)] = valObj;
+
+        renderExpression(); // This calls updateDisplay() which updates button states
     }
 
 
@@ -222,10 +245,9 @@ document.addEventListener("DOMContentLoaded", async function() {
     // --- Operator buttons ---
     operationButtons.forEach((button) => {
         button.addEventListener("click", function() {
-            if (!this.disabled) appendValue(this.dataset.value);
+            appendValue(this.dataset.value);
         });
     });
-
     // --- Expression use button ---
     let totalExpressions = 0;
 

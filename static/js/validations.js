@@ -1,61 +1,54 @@
-
-// validation.js
-
-
-
+// Add 'export' to these two functions
 export function isNumber(value) {
-    return !isNaN(value);
-}/**
- * Checks if a value is an operator (+, -, ×, ÷)
- * @param {any} value 
- * @returns {boolean}
- */
+    return typeof value === "number" || !isNaN(Number(value));
+}
+
 export function isOperator(value) {
     return ["+", "-", "×", "÷"].includes(value);
 }
 
-/**
- * Determines if a value can be appended to the current expression
- * @param {object|number|string} lastValue - last value in current expression
- * @param {object|number|string} newValue - value trying to append
- * @returns {boolean}
- */
-export function canAppend(lastValue, newValue) {
-    if (!lastValue) {
-        return isNumber(newValue);
-    }
-
-    if (isOperator(lastValue) && isOperator(newValue)) return false;
-    if (isNumber(lastValue) && isNumber(newValue)) return false;
-
-    if (isOperator(newValue)) {
-        return isNumber(lastValue);
-    } else {
-        return !isNumber(lastValue) || isOperator(lastValue) ? true : false;
-    }
+function unwrap(v) {
+    return (v && typeof v === "object" && "value" in v) ? v.value : v;
 }
 
-/**
- * Checks if an expression is valid (for "use" button)
- * @param {object} expr - expression object {1: ..., 2: ..., ...}
- * @returns {boolean}
- */
+export function canAppend(lastValue, newValue) {
+    // ... existing logic ...
+    lastValue = unwrap(lastValue);
+    newValue = unwrap(newValue);
+
+    const lastIsNum = isNumber(lastValue);
+    const lastIsOp = isOperator(lastValue);
+    const newIsNum = isNumber(newValue);
+    const newIsOp = isOperator(newValue);
+
+    if (lastValue == null) {
+        return newIsNum;
+    }
+
+    if (lastIsNum && newIsNum) return false;
+    if (lastIsOp && newIsOp) return false;
+    if (lastIsNum && newIsOp) return true;
+    if (lastIsOp && newIsNum) return true;
+
+    return false;
+}
 export function isValidExpression(expr) {
     const items = Object.keys(expr)
         .sort((a, b) => Number(a) - Number(b))
-        .map(k => expr[k]);
+        .map(k => unwrap(expr[k]));
 
+    // 1. Minimum length rule: We need "Number Operator Number" (length 3) to calculate anything.
     if (items.length < 3) return false;
 
-    const isNumLike = (item) => isNumber(item);
+    // 2. Odd vs Even rule:
+    // Because we enforce alternating "Num Op Num", 
+    // Odd length = Ends in Number (Valid)
+    // Even length = Ends in Operator (Invalid)
+    if (items.length % 2 === 0) return false;
 
-    if (!isNumLike(items[0])) return false;
-
-    for (let i = 1; i < items.length; i += 2) {
-        const op = items[i];
-        const nxt = items[i + 1];
-        if (!isOperator(op) || !isNumLike(nxt)) return false;
-    }
+    // 3. Safety check: Ensure the last item is actually a number
+    const lastItem = items[items.length - 1];
+    if (!isNumber(lastItem)) return false;
 
     return true;
 }
