@@ -175,20 +175,29 @@ document.addEventListener("DOMContentLoaded", async function() {
 
         const last = values[values.length - 1];
 
+        // Check if the last item in the expression is an operator (used to enable swap)
+        const isLastOperator = typeof last === 'string' && isOperator(last);
+
+        // ... (rest of the highlight logic here) ...
+
         useButton.style.display = isValidExpression(expression)
             ? "inline-block"
             : "none";
 
-        // Update operator buttons (Keep validation here: can't put + after +)
+        // Update operator buttons
         operationButtons.forEach(btn => {
             const op = btn.dataset.value;
-            btn.disabled = !canAppend(last, op);
+
+            // Buttons are enabled if:
+            // 1. It's a mathematically valid APPEND (Num → Op), OR
+            // 2. The last item is already an operator (Op → Op SWAP)
+            const shouldBeEnabled = canAppend(last, op) || isLastOperator;
+
+            btn.disabled = !shouldBeEnabled;
         });
 
         // Update number buttons
         document.querySelectorAll(".btn-number").forEach(btn => {
-            // CHANGE: We always allow numbers to be clicked. 
-            // If it's a valid append, it appends. If it's a swap, moveToExpression handles it.
             btn.disabled = false;
         });
     }
@@ -199,33 +208,32 @@ document.addEventListener("DOMContentLoaded", async function() {
         const lastKey = keys[keys.length - 1];
         const last = expression[lastKey];
 
-        // --- NEW OPERATOR SWAP LOGIC ---
-        // Determine if the last item is an operator (operators are stored as strings)
+        // Default target key is to APPEND (next sequential index)
+        let targetKey = String(keys.length + 1);
+
+        // 1. Check if the last item is an operator (for replacement)
+        // We use isOperator, which was imported from validations.js
         if (typeof last === 'string' && isOperator(last)) {
-            // Swap: Delete the old operator
+            // SWAP LOGIC: We are replacing the existing operator.
+
+            // Set the target key to the key of the item we are replacing
+            targetKey = lastKey;
+
+            // Delete the old item to clear the space
             delete expression[lastKey];
         }
 
-        // Prevent invalid input (e.g., Number after Operator, which should never happen here
-        // if the UI is correct, but kept for safety in case of bugs)
-        if (last && !isOperator(last) && !canAppend(last, value)) {
+        // 2. Prevent invalid input if we are NOT swapping (e.g., operator when expression is empty)
+        else if (!canAppend(last, value)) {
             console.warn("Rejected invalid input:", last, "→", value);
             return;
         }
 
-        // Standard Logic (Append new operator)
-        let valObj;
-        // Since operators are strings, we just use the value directly
-        valObj = value;
+        // 3. Append/Replace the new operator using the determined targetKey
+        expression[targetKey] = value;
 
-        // Use the next sequential key for the new entry
-        const nextIndex = Object.keys(expression).length + 1;
-        expression[String(nextIndex)] = valObj;
-
-        renderExpression(); // This calls updateDisplay() which updates button states
+        renderExpression();
     }
-
-
     function buildEvalString(exprObj) {
         if (!exprObj || !exprObj.elements) return exprObj?.value ?? "";
         if (exprObj.elements.length === 1 && typeof exprObj.elements[0] !== "object") {
