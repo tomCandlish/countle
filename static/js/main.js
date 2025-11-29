@@ -131,7 +131,6 @@ document.addEventListener("DOMContentLoaded", async function() {
         function build(node, depth) {
             const hasNested = node.elements.some(el => typeof el === "object" && el.elements);
 
-            // BASE CASE: flat expression → no bubble
             if (!hasNested) {
                 const span = document.createElement("span");
                 span.className = "expr-flat";
@@ -175,28 +174,20 @@ document.addEventListener("DOMContentLoaded", async function() {
 
         const last = values[values.length - 1];
 
-        // Check if the last item in the expression is an operator (used to enable swap)
         const isLastOperator = typeof last === 'string' && isOperator(last);
-
-        // ... (rest of the highlight logic here) ...
 
         useButton.style.display = isValidExpression(expression)
             ? "inline-block"
             : "none";
 
-        // Update operator buttons
         operationButtons.forEach(btn => {
             const op = btn.dataset.value;
 
-            // Buttons are enabled if:
-            // 1. It's a mathematically valid APPEND (Num → Op), OR
-            // 2. The last item is already an operator (Op → Op SWAP)
             const shouldBeEnabled = canAppend(last, op) || isLastOperator;
 
             btn.disabled = !shouldBeEnabled;
         });
 
-        // Update number buttons
         document.querySelectorAll(".btn-number").forEach(btn => {
             btn.disabled = false;
         });
@@ -208,28 +199,18 @@ document.addEventListener("DOMContentLoaded", async function() {
         const lastKey = keys[keys.length - 1];
         const last = expression[lastKey];
 
-        // Default target key is to APPEND (next sequential index)
         let targetKey = String(keys.length + 1);
 
-        // 1. Check if the last item is an operator (for replacement)
-        // We use isOperator, which was imported from validations.js
         if (typeof last === 'string' && isOperator(last)) {
-            // SWAP LOGIC: We are replacing the existing operator.
-
-            // Set the target key to the key of the item we are replacing
             targetKey = lastKey;
-
-            // Delete the old item to clear the space
             delete expression[lastKey];
         }
 
-        // 2. Prevent invalid input if we are NOT swapping (e.g., operator when expression is empty)
         else if (!canAppend(last, value)) {
             console.warn("Rejected invalid input:", last, "→", value);
             return;
         }
 
-        // 3. Append/Replace the new operator using the determined targetKey
         expression[targetKey] = value;
 
         renderExpression();
