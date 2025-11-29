@@ -59,32 +59,21 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     function moveToExpression(key, expr) {
-        // 1. Check the last item in the expression
         const exprKeys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
         const lastKey = exprKeys[exprKeys.length - 1];
         const lastItem = expression[lastKey];
 
-        // 2. Determine if the last item is a Number/Expression (and not an operator)
-        // In your code, operators are strings, numbers/expressions are objects.
         const isLastItemNumber = lastItem && (typeof lastItem === 'object');
 
         if (isLastItemNumber) {
-            // --- SWAP LOGIC ---
-            // A. Return the last item back to the 'numbers' pool
-            // We create a unique key to ensure no collisions in the numbers object
             const returnKey = `returned_${Date.now()}`;
             numbers[returnKey] = lastItem;
 
-            // B. Remove it from the expression
             delete expression[lastKey];
         }
 
-        // 3. Standard Logic (Append new item)
-        // Remove the *new* item from available numbers
         delete numbers[key];
 
-        // Add to the working expression (Determine new key based on current length)
-        // We recalculate length because we might have just deleted an item above
         const nextIndex = Object.keys(expression).length + 1;
         expression[String(nextIndex)] = expr;
 
