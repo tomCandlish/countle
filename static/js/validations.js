@@ -12,7 +12,6 @@ function unwrap(v) {
 }
 
 export function canAppend(lastValue, newValue) {
-    // ... existing logic ...
     lastValue = unwrap(lastValue);
     newValue = unwrap(newValue);
 
@@ -37,16 +36,10 @@ export function isValidExpression(expr) {
         .sort((a, b) => Number(a) - Number(b))
         .map(k => unwrap(expr[k]));
 
-    // 1. Minimum length rule: We need "Number Operator Number" (length 3) to calculate anything.
     if (items.length < 3) return false;
 
-    // 2. Odd vs Even rule:
-    // Because we enforce alternating "Num Op Num", 
-    // Odd length = Ends in Number (Valid)
-    // Even length = Ends in Operator (Invalid)
     if (items.length % 2 === 0) return false;
 
-    // 3. Safety check: Ensure the last item is actually a number
     const lastItem = items[items.length - 1];
     if (!isNumber(lastItem)) return false;
 
