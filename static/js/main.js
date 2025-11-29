@@ -1,5 +1,4 @@
-
-
+import { isNumber, isOperator, isValidExpression, canAppend } from "./validations.js";
 
 document.addEventListener("DOMContentLoaded", async function() {
     const numberContainer = document.getElementById("number-container");
@@ -60,18 +59,27 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     function moveToExpression(key, expr) {
-        // remove from available numbers
+        const exprKeys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
+        const lastKey = exprKeys[exprKeys.length - 1];
+        const lastItem = expression[lastKey];
+
+        const isLastItemNumber = lastItem && (typeof lastItem === 'object');
+
+        if (isLastItemNumber) {
+            const returnKey = `returned_${Date.now()}`;
+            numbers[returnKey] = lastItem;
+
+            delete expression[lastKey];
+        }
+
         delete numbers[key];
 
-        // add to the working expression
-        const newKey = String(Object.keys(expression).length + 1);
-        expression[newKey] = expr;
+        const nextIndex = Object.keys(expression).length + 1;
+        expression[String(nextIndex)] = expr;
 
         renderNumberButtons();
         renderExpression();
     }
-
-
     function renderExpression() {
         expressionContainer.innerHTML = "";
 
@@ -112,7 +120,6 @@ document.addEventListener("DOMContentLoaded", async function() {
         function build(node, depth) {
             const hasNested = node.elements.some(el => typeof el === "object" && el.elements);
 
-            // BASE CASE: flat expression → no bubble
             if (!hasNested) {
                 const span = document.createElement("span");
                 span.className = "expr-flat";
@@ -148,71 +155,55 @@ document.addEventListener("DOMContentLoaded", async function() {
         return build(exprObj, 0);
     }
 
-    // --- Helpers ---
-    function isOperator(value) {
-        return ["+", "-", "×", "÷"].includes(value);
-    }
-
-    function isNumber(value) {
-        return !isNaN(value);
-    }
-
 
     function updateDisplay() {
-        useButton.style.display = isValidExpression(expression) ? "inline-block" : "none";
-
-        const keys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
-        const last = expression[keys[keys.length - 1]];
-
-        const lastIsNum = (typeof last === "object" && last.elements) || isNumber(last);
-        operationButtons.forEach((btn) => (btn.disabled = !lastIsNum));
-    }
-    // --- Valid expres
-    function isValidExpression(expr) {
-        const items = Object.keys(expr)
+        const values = Object.keys(expression)
             .sort((a, b) => Number(a) - Number(b))
-            .map(k => expr[k]);
+            .map(k => expression[k]);
 
-        if (items.length < 3) return false;
+        const last = values[values.length - 1];
 
-        const isNumLike = (item) => {
-            if (typeof item === "object" && item.elements) {
-                return true; // any expression object counts as numeric term
-            }
-            return isNumber(item);
-        };
+        const isLastOperator = typeof last === 'string' && isOperator(last);
 
-        if (!isNumLike(items[0])) return false;
+        useButton.style.display = isValidExpression(expression)
+            ? "inline-block"
+            : "none";
 
-        for (let i = 1; i < items.length; i += 2) {
-            const op = items[i];
-            const nxt = items[i + 1];
-            if (!isOperator(op) || !isNumLike(nxt)) return false;
-        }
+        operationButtons.forEach(btn => {
+            const op = btn.dataset.value;
 
-        return true;
+            const shouldBeEnabled = canAppend(last, op) || isLastOperator;
+
+            btn.disabled = !shouldBeEnabled;
+        });
+
+        document.querySelectorAll(".btn-number").forEach(btn => {
+            btn.disabled = false;
+        });
     }
 
 
     function appendValue(value) {
-        const keys = Object.keys(expression);
+        const keys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
         const lastKey = keys[keys.length - 1];
         const last = expression[lastKey];
 
-        if (isOperator(value)) {
-            if (!last || isOperator(last)) return;
-            expression[keys.length + 1] = value;
-        } else {
-            const valObj = (typeof value === "object" && value.elements)
-                ? JSON.parse(JSON.stringify(value))
-                : { value: Number(value), elements: [Number(value)] };
-            expression[keys.length + 1] = valObj;
+        let targetKey = String(keys.length + 1);
+
+        if (typeof last === 'string' && isOperator(last)) {
+            targetKey = lastKey;
+            delete expression[lastKey];
         }
+
+        else if (!canAppend(last, value)) {
+            console.warn("Rejected invalid input:", last, "→", value);
+            return;
+        }
+
+        expression[targetKey] = value;
 
         renderExpression();
     }
-
-
     function buildEvalString(exprObj) {
         if (!exprObj || !exprObj.elements) return exprObj?.value ?? "";
         if (exprObj.elements.length === 1 && typeof exprObj.elements[0] !== "object") {
@@ -232,10 +223,9 @@ document.addEventListener("DOMContentLoaded", async function() {
     // --- Operator buttons ---
     operationButtons.forEach((button) => {
         button.addEventListener("click", function() {
-            if (!this.disabled) appendValue(this.dataset.value);
+            appendValue(this.dataset.value);
         });
     });
-
     // --- Expression use button ---
     let totalExpressions = 0;
 
