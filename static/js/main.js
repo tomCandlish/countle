@@ -182,10 +182,21 @@ document.addEventListener("DOMContentLoaded", async function() {
         const hasItems = values.length > 0;
 
         const valid = isValidExpression(expression);
-        useButton.style.display = valid ? "inline-block" : "none";
-        submitButton.style.display = valid ? "inline-block" : "none";
 
-        // --- VISUAL HIGHLIGHT LOGIC REMOVED (No longer applying inline styles) ---
+        // Check if a single number/expression is in the working area
+        let canSubmitSingle = false;
+        if (values.length === 1 && typeof values[0] === 'object' && 'value' in values[0]) {
+            // If there is exactly one number/expression in the working area, 
+            // it is ready to be submitted as the final result (even if it's wrong)
+            canSubmitSingle = true;
+        }
+
+        // The "Use" button only appears for complete expressions (length >= 3, odd)
+        useButton.style.display = valid ? "inline-block" : "none";
+
+        // The "Submit" button appears for complete expressions OR if a single number is ready for submission
+        const isReadyForSubmit = valid || canSubmitSingle;
+        submitButton.style.display = isReadyForSubmit ? "inline-block" : "none";
 
         // Update operator buttons
         const isLastOperator = typeof last === 'string' && isOperator(last);
@@ -287,12 +298,12 @@ document.addEventListener("DOMContentLoaded", async function() {
         if (Number.isFinite(result)) {
             // Must be an integer result
             if (!Number.isInteger(result)) {
-                alert(`Cannot use this expression: Result (${result}) is not an integer.`);
+                // Reject silently (as requested)
                 return;
             }
-            // New check for negatives at the Use stage as well
+            // Check for negatives
             if (result < 0) {
-                alert(`Cannot use this expression: Result (${result}) is negative.`);
+                // Reject silently (as requested)
                 return;
             }
 
@@ -322,13 +333,17 @@ document.addEventListener("DOMContentLoaded", async function() {
             .sort((a, b) => Number(a) - Number(b))
             .map(k => expression[k]);
 
-        if (!isValidExpression(expression)) {
+        const isSingleElement = exprValues.length === 1;
+
+        // Only block if it's not a single element AND it's not a valid full expression
+        if (!isValidExpression(expression) && !isSingleElement) {
             alert("The current entry is not a complete expression.");
             return;
         }
 
         const currentTotal = evaluate(exprValues);
 
+        // Final sanity checks
         if (!Number.isInteger(currentTotal)) {
             alert(`Final result (${currentTotal}) is not an integer!`);
             return;
