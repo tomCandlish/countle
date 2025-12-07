@@ -98,8 +98,9 @@ export function isSafeMove(currentExpr, newValue) {
     const lastOpIndex = items.length - 2;
     const lastOp = items[lastOpIndex];
 
+
     // 3. Check specific rule: Integer Division
-    if (lastOp === '÷' || lastOp === '/') {
+    if (lastOp === '÷' || lastOp === '/' || lastOp === '-') {
         // Find the full mathematical chain that precedes the divisor
         let chain = [];
         for (let i = lastOpIndex - 1; i >= 0; i--) {
@@ -111,16 +112,18 @@ export function isSafeMove(currentExpr, newValue) {
             chain.unshift(token);
         }
 
-        // Calculate the value of the numerator chain
-        const numerator = evaluate(chain);
-        const denominator = getVal(items[items.length - 1]);
+        if (lastOp === '÷' || lastOp === '/') {
+            const numerator = evaluate(chain);
+            const denominator = getVal(items[items.length - 1]);
 
-        if (denominator === 0) return false; // Prevent division by zero
+            if (denominator === 0) return false; // Prevent division by zero
 
-        // Must be divisible by the denominator to be a safe move
-        if (numerator % denominator !== 0) {
-            return false;
+            // Must be divisible by the denominator to be a safe move
+            if (numerator % denominator !== 0) {
+                return false;
+            }
         }
+        if (evaluate(chain) <= getVal(items[items.length - 1])) return false;
     }
 
     return true;
