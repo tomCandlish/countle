@@ -1,19 +1,30 @@
 import { isNumber, isOperator, isValidExpression, canAppend } from "./validations.js";
+import { evaluate, isSafeMove } from "./calculator.js";
 
 document.addEventListener("DOMContentLoaded", async function() {
     const numberContainer = document.getElementById("number-container");
     const expressionContainer = document.getElementById("expression-container");
-    const expressionDisplay = document.getElementById("expression-display");
     const useButton = document.getElementById("use-expression");
+    const submitButton = document.createElement("button"); // Create the submit button dynamically
+    submitButton.id = "submit-puzzle";
+    submitButton.className = "btn btn-primary mt-3";
+    submitButton.textContent = "Submit Solution";
+    submitButton.style.display = "none";
+    submitButton.style.marginLeft = "10px";
+
+    // Insert the submit button next to the use button
+    useButton.parentElement.insertBefore(submitButton, useButton.nextSibling);
+
     const operationButtons = document.querySelectorAll(".operation");
 
     let original_numbers = {};
     let numbers = {};
     let expression = {};
-
+    let puzzleTarget = 0; // Stored target number
 
     // --- Fetch numbers from backend ---
     try {
+        // Reverting to the backend fetch call as requested
         const response = await fetch("/src/daily_puzzle");
         const data = await response.json();
 
@@ -22,16 +33,15 @@ document.addEventListener("DOMContentLoaded", async function() {
             data.numbers.map((num, idx) => [String(idx + 1), { value: num, elements: [num] }])
         );
         numbers = { ...original_numbers };
+        puzzleTarget = data.target;
 
         console.log("Original numbers:", original_numbers);
-        console.log("Target:", data.target);
+        console.log("Target:", puzzleTarget);
 
         renderNumberButtons();
     } catch (err) {
         console.error("Error fetching numbers:", err);
     }
-
-
 
     function renderNumberButtons() {
         numberContainer.innerHTML = "";
@@ -59,19 +69,28 @@ document.addEventListener("DOMContentLoaded", async function() {
     }
 
     function moveToExpression(key, expr) {
+        // --- NEW VALIDATION: Check for non-integer OR negative result ---
+        // If the move is unsafe, we simply return (ignore input) without alerting.
+        if (!isSafeMove(expression, expr)) {
+            return;
+        }
+
+        // 1. Check the last item in the expression (for swap logic)
         const exprKeys = Object.keys(expression).sort((a, b) => Number(a) - Number(b));
         const lastKey = exprKeys[exprKeys.length - 1];
         const lastItem = expression[lastKey];
 
+        // Operators are strings, numbers/expressions are objects
         const isLastItemNumber = lastItem && (typeof lastItem === 'object');
 
         if (isLastItemNumber) {
+            // --- SWAP LOGIC: Return the last number/expression to the pool ---
             const returnKey = `returned_${Date.now()}`;
             numbers[returnKey] = lastItem;
-
             delete expression[lastKey];
         }
 
+        // 2. Standard Logic (Append new item)
         delete numbers[key];
 
         const nextIndex = Object.keys(expression).length + 1;
@@ -80,6 +99,8 @@ document.addEventListener("DOMContentLoaded", async function() {
         renderNumberButtons();
         renderExpression();
     }
+
+
     function renderExpression() {
         expressionContainer.innerHTML = "";
 
@@ -99,8 +120,6 @@ document.addEventListener("DOMContentLoaded", async function() {
 
         updateDisplay();
     }
-
-
 
 
     function renderExpressionButton(exprObj) {
@@ -127,7 +146,6 @@ document.addEventListener("DOMContentLoaded", async function() {
                 return span;
             }
 
-            // depth = 0 → outermost
             let layer = (maxDepth - depth) + 1;
             if (layer > 6) layer = 6;
 
@@ -155,28 +173,44 @@ document.addEventListener("DOMContentLoaded", async function() {
         return build(exprObj, 0);
     }
 
-
     function updateDisplay() {
         const values = Object.keys(expression)
             .sort((a, b) => Number(a) - Number(b))
             .map(k => expression[k]);
 
         const last = values[values.length - 1];
+        const hasItems = values.length > 0;
 
+        const valid = isValidExpression(expression);
+
+        // Check if a single number/expression is in the working area
+        let canSubmitSingle = false;
+        if (values.length === 1 && typeof values[0] === 'object' && 'value' in values[0]) {
+            // If there is exactly one number/expression in the working area, 
+            // it is ready to be submitted as the final result (even if it's wrong)
+            canSubmitSingle = true;
+        }
+
+        // The "Use" button only appears for complete expressions (length >= 3, odd)
+        useButton.style.display = valid ? "inline-block" : "none";
+
+        // The "Submit" button appears for complete expressions OR if a single number is ready for submission
+        const isReadyForSubmit = valid || canSubmitSingle;
+        submitButton.style.display = isReadyForSubmit ? "inline-block" : "none";
+
+        // Update operator buttons
         const isLastOperator = typeof last === 'string' && isOperator(last);
-
-        useButton.style.display = isValidExpression(expression)
-            ? "inline-block"
-            : "none";
 
         operationButtons.forEach(btn => {
             const op = btn.dataset.value;
 
+            // Enabled if: 1. Valid APPEND (Num → Op), OR 2. Operator SWAP (Op → Op)
             const shouldBeEnabled = canAppend(last, op) || isLastOperator;
 
             btn.disabled = !shouldBeEnabled;
         });
 
+        // Update number buttons: Always enabled for swap logic
         document.querySelectorAll(".btn-number").forEach(btn => {
             btn.disabled = false;
         });
@@ -188,22 +222,39 @@ document.addEventListener("DOMContentLoaded", async function() {
         const lastKey = keys[keys.length - 1];
         const last = expression[lastKey];
 
-        let targetKey = String(keys.length + 1);
+        const isNewOperator = isOperator(value);
+        const isLastOperator = typeof last === 'string' && isOperator(last);
 
-        if (typeof last === 'string' && isOperator(last)) {
-            targetKey = lastKey;
+        // --- 1. OPERATOR REPLACEMENT (SWAP) LOGIC ---
+        if (isLastOperator && isNewOperator) {
+            // --- NEW VALIDATION: Check for non-integer OR negative result ---
+            if (!isSafeMove(expression, value)) {
+                // Ignore unsafe swaps silently
+                return;
+            }
+
+            const targetKey = lastKey;
             delete expression[lastKey];
+
+            expression[targetKey] = value;
+            renderExpression();
+            return;
         }
 
-        else if (!canAppend(last, value)) {
+        // --- 2. REGULAR APPEND VALIDATION LOGIC (Must be Num → Op) ---
+        if (!canAppend(last, value)) {
             console.warn("Rejected invalid input:", last, "→", value);
             return;
         }
 
-        expression[targetKey] = value;
+        // --- 3. STANDARD APPEND LOGIC (Num → Op) ---
+        const nextIndex = keys.length + 1;
+        expression[String(nextIndex)] = value;
 
         renderExpression();
     }
+
+
     function buildEvalString(exprObj) {
         if (!exprObj || !exprObj.elements) return exprObj?.value ?? "";
         if (exprObj.elements.length === 1 && typeof exprObj.elements[0] !== "object") {
@@ -226,12 +277,12 @@ document.addEventListener("DOMContentLoaded", async function() {
             appendValue(this.dataset.value);
         });
     });
+
     // --- Expression use button ---
     let totalExpressions = 0;
 
 
     useButton.addEventListener("click", function() {
-        // Sort keys numerically to preserve button order
         const exprValues = Object.keys(expression)
             .sort((a, b) => Number(a) - Number(b))
             .map(k => expression[k]);
@@ -241,37 +292,70 @@ document.addEventListener("DOMContentLoaded", async function() {
             return;
         }
 
-        // Wrap current working expression as one object
-        const newExprObj = {
-            value: null,
-            elements: exprValues
-        };
+        // 1. Evaluate using the robust function
+        const result = evaluate(exprValues);
 
-        const rawExpr = buildEvalString(newExprObj)
-            .replace(/×/g, "*")
-            .replace(/÷/g, "/");
-
-        try {
-            const result = eval(rawExpr);
-
-            if (Number.isFinite(result)) {
-                totalExpressions++;
-                const newKey = String(totalExpressions + 6);
-
-                newExprObj.value = result;
-                numbers[newKey] = newExprObj;
-
-                // Reset and re-render
-                expression = {};
-                renderNumberButtons();
-                renderExpression();
-            } else {
-                alert("Invalid expression (not finite)");
+        if (Number.isFinite(result)) {
+            // Must be an integer result
+            if (!Number.isInteger(result)) {
+                // Reject silently (as requested)
+                return;
             }
-        } catch (e) {
-            alert("Invalid expression");
-            console.error("Eval error:", e, "\nRaw expression:", rawExpr);
+            // Check for negatives
+            if (result < 0) {
+                // Reject silently (as requested)
+                return;
+            }
+
+            totalExpressions++;
+            const newKey = String(totalExpressions + 6);
+
+            const newExprObj = {
+                value: result,
+                elements: exprValues
+            };
+
+            numbers[newKey] = newExprObj;
+
+            // Reset and re-render
+            expression = {};
+            renderNumberButtons();
+            renderExpression();
+        } else {
+            alert("Invalid expression (division by zero or other error)");
+            console.error("Evaluation error, result:", result);
         }
     });
+
+    // --- Submit puzzle button ---
+    submitButton.addEventListener("click", function() {
+        const exprValues = Object.keys(expression)
+            .sort((a, b) => Number(a) - Number(b))
+            .map(k => expression[k]);
+
+        const isSingleElement = exprValues.length === 1;
+
+        // Only block if it's not a single element AND it's not a valid full expression
+        if (!isValidExpression(expression) && !isSingleElement) {
+            alert("The current entry is not a complete expression.");
+            return;
+        }
+
+        const currentTotal = evaluate(exprValues);
+
+        // Final sanity checks
+        if (!Number.isInteger(currentTotal)) {
+            alert(`Final result (${currentTotal}) is not an integer!`);
+            return;
+        }
+
+        if (currentTotal === puzzleTarget) {
+            alert(`🎉 CORRECT! ${puzzleTarget} = ${buildEvalString({ elements: exprValues })}`);
+            // Add win/reset logic here
+        } else {
+            alert(`Incorrect. You reached ${currentTotal}. The target is ${puzzleTarget}.`);
+        }
+    });
+
     renderExpression();
-})
+});
