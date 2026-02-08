@@ -1,0 +1,12 @@
+[package]
+name = "rust_solver"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "rust_solver"
+crate-type = ["cdylib"]
+
+[dependencies]
+# "extension-module" allows Python to import this compiled library
+pyo3 = { version = "0.20", features = ["extension-module"] }

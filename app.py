@@ -16,7 +16,7 @@ def create_app():
 
     def generate_daily_puzzle(today):
         # Use date as seed for deterministic puzzle generation
-        numbers, target = logic.number_generator.generate_daily_puzzle()
+        numbers, target = logic.number_generator.generate_daily_puzzle(today)
         return numbers, target
 
     @app.route('/')

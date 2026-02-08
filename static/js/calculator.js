@@ -123,7 +123,8 @@ export function isSafeMove(currentExpr, newValue) {
                 return false;
             }
         }
-        if (evaluate(chain) <= getVal(items[items.length - 1])) return false;
+
+        if (lastOp === '-' & (evaluate(chain) <= getVal(items[items.length - 1]))) return false;
     }
 
     return true;

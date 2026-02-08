@@ -1,11 +1,10 @@
 import random
-import datetime
-
+from rust_solver import check_puzzle_is_solvable
 
 large_ones = [25, 50, 75, 100]
 small_ones = list(range(1,11))*2
 
-def get_big_ones(num_big: int, seed: int = random.randint(1,1000)): 
+def get_big_ones(num_big: int, seed: int = random.randint(1,1000000)): 
     if num_big > 4:
         print("too many big")
     if num_big < 0:
@@ -15,7 +14,7 @@ def get_big_ones(num_big: int, seed: int = random.randint(1,1000)):
     nums = large_ones_to_grab[:num_big]
     return nums
 
-def get_small_ones(num_small: int, seed: int = random.randint(1, 1000)):
+def get_small_ones(num_small: int, seed: int = random.randint(1, 1000000)):
     if num_small < 2:
         print("Too little small")
     if num_small > 6:
@@ -39,12 +38,19 @@ def make_puzzle(num_big: int, seed: int = 1000):
     target = gen_target(seed)
     return numbers, target
 
-def generate_daily_puzzle():
+
+def make_solvable_puzzle(num_big: int, seed: int) -> tuple[list[int], int]:
+    numbers, target = make_puzzle(num_big, seed)
+    if check_puzzle_is_solvable(numbers, target):
+        return numbers, target
+    return make_solvable_puzzle(num_big, random.Random(seed).randint(1,1000000))
+        
+
+def generate_daily_puzzle(today):
     # Use today's date to generate a reproducible puzzle
-    today = datetime.date.today()
     seed = today.toordinal()
     num_big = random.Random(seed).randint(0,4)
-    numbers, target = make_puzzle(num_big, seed) 
+    numbers, target = make_solvable_puzzle(num_big, seed) 
     return numbers, target
 
 
